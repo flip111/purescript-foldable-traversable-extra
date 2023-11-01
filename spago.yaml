@@ -1,0 +1,21 @@
+package:
+  name: foldable-traversable-extra
+  dependencies:
+    - arrays-extra
+    - either
+    - foldable-traversable
+    - maybe
+    - ordered-collections
+    - prelude
+    - transformers
+    - tuples
+  publish:
+    version: 0.0.1
+    license: Apache-2.0
+    location:
+      githubOwner: flip111
+      githubRepo: foldable-traversable-extra
+workspace:
+  extra_packages: {}
+  package_set:
+    registry: 43.5.0
