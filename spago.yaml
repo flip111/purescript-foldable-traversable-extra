@@ -1,14 +1,14 @@
 package:
   name: foldable-traversable-extra
   dependencies:
-    - arrays-extra
-    - either
-    - foldable-traversable
-    - maybe
-    - ordered-collections
-    - prelude
-    - transformers
-    - tuples
+    - arrays-extra: ">=0.4.1 <0.5.0"
+    - either: ">=6.1.0 <7.0.0"
+    - foldable-traversable: ">=6.0.0 <7.0.0"
+    - maybe: ">=6.0.0 <7.0.0"
+    - ordered-collections: ">=3.1.1 <4.0.0"
+    - prelude: ">=6.0.1 <7.0.0"
+    - transformers: ">=6.0.0 <7.0.0"
+    - tuples: ">=7.0.0 <8.0.0"
   publish:
     version: 0.0.1
     license: Apache-2.0
