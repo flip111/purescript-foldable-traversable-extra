@@ -1,20 +1,33 @@
--- | Some specialized functions can be found here.
+module Data.Foldable.Extra
+  ( partitionMaybe
+  , mapMaybeAny
+  , mapEither
+  , occurrences
+  , occurrencesMap
+  , sameElements
+  , groupMaybe
+  , groupMaybeMap
+  , allPredicate
+  , anyPredicate
+  ) where
 
-module Data.Foldable.Extra where
-
-import Control.Applicative (class Applicative, pure)
-import Data.Array.Extra.First (modifyOrSnoc)
+import Control.Applicative (pure)
+import Data.Array (findIndex, snoc, modifyAt)
+import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Array.NonEmpty as NEA
 import Data.Either (Either(..))
 import Data.Eq (class Eq, (/=), (==))
 import Data.Foldable (all, elem, length, null)
+import Data.HeytingAlgebra ((||), (&&))
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
-import Data.Monoid (class Monoid, mempty, (<>))
+import Data.Maybe (Maybe(..), fromJust)
+import Data.Monoid (mempty, (<>))
 import Data.Ord (class Ord)
 import Data.Semiring ((+))
 import Data.Traversable (class Foldable, foldl)
 import Data.Tuple (Tuple(..))
+import Partial.Unsafe (unsafePartial)
 
 
 -- | Try to make a projection from an array. Return an array with the projection and the original array with the elements removed.
@@ -28,6 +41,26 @@ partitionMaybe f xs = foldl go {yes: [], no: []} xs
           case f x of
             Nothing -> rec {no  = no <> [x]}
             Just b  -> rec {yes = yes <> [b]}
+
+-- | Map an array conditionally, only return the array when at least one element was mapped.
+-- | Elements that are not mapped will keep the old value.
+-- |
+-- | ```purescript
+-- | mapMaybeAny (\_ -> Nothing) [1,2,3] == Nothing
+-- | mapMaybeAny (\x -> if x == 2 then Just 99 else Nothing) [1,2,3] == Just [1,99,3]
+-- | ```
+mapMaybeAny :: forall f a. Foldable f => (a -> Maybe a) -> f a -> Maybe (Array a)
+mapMaybeAny f xs =
+  let go (Tuple acc replaced) x = case f x of
+          Nothing -> Tuple (acc <> pure x) replaced
+          Just y  -> Tuple (acc <> pure y) true
+
+      Tuple acc replaced = foldl go (Tuple mempty false) xs
+
+  in  if replaced then
+        Just acc
+      else
+        Nothing
 
 -- | Map with a function that yields `Either`. Only succeeding when all elements where mapped to `Right`.
 -- | Hint: if you don't care about collecting all the Left's (error conditions) and you are looking for a function like
@@ -45,16 +78,6 @@ mapEither f foldable =
           Right r -> {lefts, rights: rights <> [r]}
 
 -- | Count the amount of times a value occurs in an array.
--- | Requires an Ord instance for Map. This function should be faster than `occurrences`
--- |
--- | ```purescript
--- | occurrencesMap ["A", "B", "B"] == Map.fromList [Tuple "A" 1, Tuple "B" 2]
--- | ```
-occurrencesMap :: forall a f. Foldable f => Ord a => f a -> Map a Int
-occurrencesMap xs = foldl go Map.empty xs
-  where go acc x = Map.insertWith (\old _ -> old + 1) x 1 acc
-
--- | Count the amount of times a value occurs in an array.
 -- | Mostly useful for when you can not define an Ord instance
 -- |
 -- | ```purescript
@@ -63,6 +86,16 @@ occurrencesMap xs = foldl go Map.empty xs
 occurrences :: forall a f. Eq a => Foldable f => f a -> Array (Tuple a Int)
 occurrences xs = foldl go [] xs
   where go acc x = modifyOrSnoc (\(Tuple k _) -> k == x) (\(Tuple k v) -> Tuple k (v + 1)) acc (Tuple x 1)
+
+-- | Count the amount of times a value occurs in an array.
+-- | Requires an Ord instance for Map. This function should be faster than `occurrences`
+-- |
+-- | ```purescript
+-- | occurrencesMap ["A", "B", "B"] == Map.fromList [Tuple "A" 1, Tuple "B" 2]
+-- | ```
+occurrencesMap :: forall a f. Foldable f => Ord a => f a -> Map a Int
+occurrencesMap xs = foldl go Map.empty xs
+  where go acc x = Map.insertWith (\old _ -> old + 1) x 1 acc
 
 -- | Checks if two arrays have exactly the same elements.
 -- | The order of elements does not matter.
@@ -82,24 +115,61 @@ sameElements a b =
             go x = x `elem` occ_b
         in  all go occ_a
 
--- | Map an array conditionally, only return the array when at least one element was mapped.
--- | Elements that are not mapped will keep the old value.
--- |
--- | Hint: mapAll can be found in Data.Traversable.Extra
+-- | Similar to `group`, adds the ability to group by a projection.
+-- | The projection is returned as the first argument of the Tuple.
 -- |
 -- | ```purescript
--- | mapAny (\_ -> Nothing) [1,2,3] == Nothing
--- | mapAny (\x -> if x == 2 then Just 99 else Nothing) [1,2,3] == Just [1,99,3]
+-- | groupMaybe (\x -> Just $ if even x then "even" else "odd") [1,2,3] == [(Tuple "odd" [1,3]), (Tuple "even" [2])]
 -- | ```
-mapAny :: forall a f. Applicative f => Foldable f => Monoid (f a) => (a -> Maybe a) -> f a -> Maybe (f a)
-mapAny f xs =
-  let go (Tuple acc replaced) x = case f x of
-          Nothing -> Tuple (acc <> pure x) replaced
-          Just y  -> Tuple (acc <> pure y) true
+groupMaybe :: forall f a b. Foldable f => Eq b => (a -> Maybe b) -> f a -> Array (Tuple b (NonEmptyArray a))
+groupMaybe f xs =
+  let g :: Array (Tuple b (NonEmptyArray a)) -> a -> Array (Tuple b (NonEmptyArray a))
+      g acc x = case f x of
+        Nothing -> acc
+        Just v  -> modifyOrSnoc (\(Tuple acc_b _) -> acc_b == v) (\(Tuple acc_b nea) -> Tuple acc_b (NEA.snoc nea x)) acc (Tuple v (NEA.singleton x))
+  in  foldl g [] xs
 
-      Tuple acc replaced = foldl go (Tuple mempty false) xs
+-- | Similar to `groupMaybe`, adds the ability to map over the thing being grouped.
+-- | Useful for removing data that was only there to do the grouping.
+-- |
+-- | ```purescript
+-- | groupMaybeMap (\x -> Just $ if even x then "even" else "odd") (*3) [1,2,3] == [(Tuple "odd" [3,9]), (Tuple "even" [6])]
+-- | groupMaybeMap f identity xs = groupMaybe f xs
+-- | ```
+groupMaybeMap :: forall a b c f. Foldable f => Eq b => (a -> Maybe b) -> (a -> c) -> f a -> Array (Tuple b (NonEmptyArray c))
+groupMaybeMap f g xs =
+  let h :: Array (Tuple b (NonEmptyArray c)) -> a -> Array (Tuple b (NonEmptyArray c))
+      h acc x = case f x of
+        Nothing -> acc
+        Just v  -> modifyOrSnoc (\(Tuple acc_b _) -> acc_b == v) (\(Tuple acc_b nea) -> Tuple acc_b (NEA.snoc nea (g x))) acc (Tuple v (NEA.singleton (g x)))
+  in  foldl h [] xs
 
-  in  if replaced then
-        Just acc
-      else
-        Nothing
+-- | Combines multiple predicates into one. All have to match.
+-- |
+-- | ```purescript
+-- | let preds = allPredicate [(_ > 5), (_ > 10)]
+-- | all preds [10,20] == true
+-- | all preds [5,10,20] == false
+-- | any preds [1,5,10] == true
+-- | any preds [1,5] == false
+-- | ```
+allPredicate :: forall f a. Foldable f => f (a -> Boolean) -> (a -> Boolean)
+allPredicate xs = foldl (\b a -> (\x -> b x && a x)) (\_ -> true) xs
+
+-- | Combines multiple predicates into one. Only one has to match.
+-- |
+-- | ```purescript
+-- | let preds = anyPredicate [(_ > 5), (_ > 10)]
+-- | all preds [5,10] == true
+-- | all preds [1,5,10] == false
+-- | any preds [1,5] == true
+-- | any preds [1] == false
+-- | ```
+anyPredicate :: forall f a. Foldable f => f (a -> Boolean) -> (a -> Boolean)
+anyPredicate xs = foldl (\b a -> (\x -> b x || a x)) (\_ -> false) xs
+
+-- Not exported
+modifyOrSnoc :: forall a. (a -> Boolean) -> (a -> a) -> Array a -> a -> Array a
+modifyOrSnoc f modifier xs x = case findIndex f xs of
+  Nothing  -> snoc xs x
+  Just idx -> unsafePartial (fromJust (modifyAt idx modifier xs))
