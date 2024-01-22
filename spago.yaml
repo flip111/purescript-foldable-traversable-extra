@@ -15,7 +15,7 @@ package:
     license: Apache-2.0
     location:
       githubOwner: flip111
-      githubRepo: foldable-traversable-extra
+      githubRepo: purescript-foldable-traversable-extra
 workspace:
   extra_packages: {}
   package_set:
