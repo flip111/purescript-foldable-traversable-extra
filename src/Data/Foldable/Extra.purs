@@ -17,8 +17,7 @@ import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NEA
 import Data.Either (Either(..))
 import Data.Eq (class Eq, (/=), (==))
-import Data.Foldable (all, elem, length, null)
-import Data.HeytingAlgebra ((||), (&&))
+import Data.Foldable (all, elem, length, null, and, or)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromJust)
@@ -145,6 +144,7 @@ groupMaybeMap f g xs =
   in  foldl h [] xs
 
 -- | Combines multiple predicates into one. All have to match.
+-- | This function is an alias for `Foldable.and`, since HeytingAlgebras lift over functions.
 -- |
 -- | ```purescript
 -- | let preds = allPredicate [(_ > 5), (_ > 10)]
@@ -154,9 +154,10 @@ groupMaybeMap f g xs =
 -- | any preds [1,5] == false
 -- | ```
 allPredicate :: forall f a. Foldable f => f (a -> Boolean) -> (a -> Boolean)
-allPredicate xs = foldl (\b a -> (\x -> b x && a x)) (\_ -> true) xs
+allPredicate = and
 
 -- | Combines multiple predicates into one. Only one has to match.
+-- | This function is an alias for `Foldable.or`, since HeytingAlgebras lift over functions.
 -- |
 -- | ```purescript
 -- | let preds = anyPredicate [(_ > 5), (_ > 10)]
@@ -166,7 +167,7 @@ allPredicate xs = foldl (\b a -> (\x -> b x && a x)) (\_ -> true) xs
 -- | any preds [1] == false
 -- | ```
 anyPredicate :: forall f a. Foldable f => f (a -> Boolean) -> (a -> Boolean)
-anyPredicate xs = foldl (\b a -> (\x -> b x || a x)) (\_ -> false) xs
+anyPredicate = or
 
 -- Not exported
 modifyOrSnoc :: forall a. (a -> Boolean) -> (a -> a) -> Array a -> a -> Array a

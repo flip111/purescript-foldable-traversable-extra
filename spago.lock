@@ -51,7 +51,7 @@ workspace:
         - unsafe-coerce
   package_set:
     address:
-      registry: 48.4.0
+      registry: 48.5.0
     compiler: ">=0.15.14 <0.16.0"
     content:
       abc-parser: 2.0.1
@@ -176,6 +176,7 @@ workspace:
       float32: 2.0.0
       fmt: 0.2.1
       foldable-traversable: 6.0.0
+      foldable-traversable-extra: 0.0.5
       foreign: 7.0.0
       foreign-object: 4.1.0
       foreign-readwrite: 3.4.0
@@ -219,6 +220,7 @@ workspace:
       halogen-typewriter: 1.0.4
       halogen-vdom: 8.0.0
       halogen-vdom-string-renderer: 0.5.0
+      halogen-xterm: 1.0.0
       heckin: 2.0.1
       heterogeneous: 0.6.0
       homogeneous: 0.4.0
@@ -514,6 +516,7 @@ workspace:
       webextension-polyfill: 0.1.0
       webgpu: 0.0.1
       which: 2.0.0
+      xterm: 1.0.0
       yoga-fetch: 1.0.1
       yoga-json: 5.1.0
       yoga-om: 0.1.0
