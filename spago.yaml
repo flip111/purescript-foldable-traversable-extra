@@ -17,6 +17,6 @@ package:
       githubOwner: flip111
       githubRepo: purescript-foldable-traversable-extra
 workspace:
-  extra_packages: {}
-  package_set:
-    registry: 48.5.0
+  extraPackages: {}
+  packageSet:
+    registry: 64.6.0

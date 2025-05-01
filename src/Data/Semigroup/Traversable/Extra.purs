@@ -18,15 +18,17 @@ import Data.Tuple (Tuple(..))
 -- | Not that in the second example the `Just` is implicit.
 mapAny :: forall a f. Traversable1 f => (a -> Maybe a) -> f a -> Maybe (f a)
 mapAny f xs =
-  let go x = case f x of
-        Nothing -> pure x
-        Just y -> do
-          put true
-          pure y
+  let
+    go x = case f x of
+      Nothing -> pure x
+      Just y -> do
+        put true
+        pure y
 
-      Tuple acc replaced = runState (traverse1 go xs) false
+    Tuple acc replaced = runState (traverse1 go xs) false
 
-  in  if replaced then
-        Just acc
-      else
-        Nothing
+  in
+    if replaced then
+      Just acc
+    else
+      Nothing
